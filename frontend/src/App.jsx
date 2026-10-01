@@ -1,7 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { BookmarksProvider } from "./context/BookmarksContext";
-import Navbar from "./components/common/Navbar";
+import Sidebar from "./components/common/Sidebar";
 import AppRoutes from "./routes/AppRoutes";
 import "./App.css";
 
@@ -10,8 +10,12 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <BookmarksProvider>
-          <Navbar />
-          <AppRoutes />
+          <div className="app-shell">
+            <Sidebar />
+            <main className="main-area">
+              <AppRoutes />
+            </main>
+          </div>
         </BookmarksProvider>
       </AuthProvider>
     </BrowserRouter>
