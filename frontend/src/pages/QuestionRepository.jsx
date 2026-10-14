@@ -38,7 +38,7 @@ export default function QuestionRepository() {
   const fields = [
     { name: "category", label: "Category", type: "select", options: CATEGORIES.map((c) => ({ value: c, label: c })) },
     { name: "topic", label: "Topic", type: "text", placeholder: "e.g. SQL" },
-    { name: "company_id", label: "Company", type: "select", options: companies.map((c) => ({ value: c.id, label: c.name })) },
+    { name: "company_id", label: "Company", type: "searchable", options: companies.map((c) => ({ value: c.id, label: c.name })) },
     { name: "difficulty", label: "Difficulty", type: "select", options: DIFFICULTIES },
   ];
 

@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.models.college import College
-from app.schemas.auth_schemas import RegisterIn, LoginIn
+from app.schemas.auth_schemas import RegisterIn, LoginIn, DeleteAccountIn
 from app.security import hash_password, verify_password, create_access_token, get_current_user
+from app.user_cleanup import delete_user_account
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -53,3 +54,20 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(current_user: User = Depends(get_current_user)):
     return {"user": current_user.to_dict()}
+
+
+@router.delete("/me")
+def delete_my_account(
+    payload: DeleteAccountIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Students/alumni can delete their own account (password re-confirmation required).
+    Their experiences stay on the platform, anonymized."""
+    if current_user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin accounts cannot be deleted from the app")
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+
+    anonymized = delete_user_account(db, current_user)
+    return {"message": "Account deleted", "experiences_anonymized": anonymized}

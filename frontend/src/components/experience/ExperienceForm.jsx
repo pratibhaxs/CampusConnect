@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { fetchCompanies, fetchCompanyDetail } from "../../api/companyApi";
+import SearchableSelect from "../common/SearchableSelect";
+import { fetchCompanies, fetchCompanyDetail, submitCompany, submitRole } from "../../api/companyApi";
 import { fetchColleges } from "../../api/collegeApi";
 
 const CATEGORIES = ["Aptitude", "Coding", "DSA", "OOP", "DBMS", "Operating Systems",
@@ -50,6 +51,57 @@ export default function ExperienceForm({ initialData, defaultCollegeId, onSubmit
     fetchCompanyDetail(form.company_id).then((res) => setRoles(res.data.roles));
   }, [form.company_id]);
 
+  // "Add new" flow for a company/role that isn't listed. The server fuzzy-matches
+  // the name; if something similar exists we ask "Did you mean ...?" first.
+  const [suggestion, setSuggestion] = useState(null); // { kind, typed, matches }
+
+  async function reloadCompanies() {
+    const res = await fetchCompanies();
+    setCompanies(res.data);
+  }
+
+  async function addCompany(name, confirmNew = false) {
+    setError("");
+    try {
+      const res = await submitCompany(name, confirmNew);
+      if (res.data.needs_confirmation) {
+        setSuggestion({ kind: "company", typed: name, matches: res.data.matches });
+        return;
+      }
+      setSuggestion(null);
+      await reloadCompanies();
+      setForm((f) => ({ ...f, company_id: String(res.data.company.id), role_id: "" }));
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not add that company.");
+    }
+  }
+
+  async function addRole(title, confirmNew = false) {
+    setError("");
+    try {
+      const res = await submitRole(form.company_id, title, confirmNew);
+      if (res.data.needs_confirmation) {
+        setSuggestion({ kind: "role", typed: title, matches: res.data.matches });
+        return;
+      }
+      setSuggestion(null);
+      const detail = await fetchCompanyDetail(form.company_id);
+      setRoles(detail.data.roles);
+      setForm((f) => ({ ...f, role_id: String(res.data.role.id) }));
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not add that role.");
+    }
+  }
+
+  function useExisting(match) {
+    if (suggestion.kind === "company") {
+      setForm((f) => ({ ...f, company_id: String(match.id), role_id: "" }));
+    } else {
+      setForm((f) => ({ ...f, role_id: String(match.id) }));
+    }
+    setSuggestion(null);
+  }
+
   function updateField(field, value) {
     setForm({ ...form, [field]: value });
   }
@@ -97,6 +149,11 @@ export default function ExperienceForm({ initialData, defaultCollegeId, onSubmit
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (!form.company_id || !form.role_id || !form.college_id) {
+      setError("Please pick the company, role and college from the suggestion lists.");
+      setStep(1);
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -134,25 +191,69 @@ export default function ExperienceForm({ initialData, defaultCollegeId, onSubmit
         <fieldset>
           <legend>Basic Information</legend>
           <label>Company
-            <select value={form.company_id} onChange={(e) => updateField("company_id", e.target.value)} required>
-              <option value="" disabled>Select company</option>
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <SearchableSelect
+              options={companies.map((c) => ({ value: c.id, label: c.name }))}
+              value={String(form.company_id ?? "")}
+              onChange={(v) => setForm((f) => ({ ...f, company_id: v, role_id: "" }))}
+              placeholder="Type to search company..."
+              onAddNew={(name) => addCompany(name)}
+              required
+            />
           </label>
           <label>Job Role
-            <select value={form.role_id} onChange={(e) => updateField("role_id", e.target.value)} required disabled={!form.company_id}>
-              <option value="" disabled>Select role</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
-            </select>
+            <SearchableSelect
+              options={roles.map((r) => ({ value: r.id, label: r.title }))}
+              value={String(form.role_id ?? "")}
+              onChange={(v) => updateField("role_id", v)}
+              placeholder="Type to search role..."
+              disabled={!form.company_id}
+              onAddNew={(title) => addRole(title)}
+              required
+            />
           </label>
           {form.company_id && roles.length === 0 && (
-            <p className="hint">No roles set up for this company yet — ask an admin to add one first.</p>
+            <p className="hint">No roles listed for this company yet — type one above and choose “Add new”.</p>
+          )}
+          {(companies.find((c) => String(c.id) === String(form.company_id))?.status === "pending"
+            || roles.find((r) => String(r.id) === String(form.role_id))?.status === "pending") && (
+            <p className="hint"><span className="badge-pending">Pending review</span> Your new company/role is awaiting admin approval. You can submit your experience now; it goes live once they approve.</p>
+          )}
+          {suggestion && (
+            <div className="suggestion-box">
+              <p>
+                Did you mean{" "}
+                {suggestion.matches.map((m, i) => (
+                  <strong key={m.id}>{i > 0 ? ", " : ""}{m.name}</strong>
+                ))}
+                ? You typed “{suggestion.typed}”.
+              </p>
+              <div className="suggestion-actions">
+                {suggestion.matches.map((m) => (
+                  <button type="button" key={m.id} className="secondary-btn" onClick={() => useExisting(m)}>
+                    Yes, use {m.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => (suggestion.kind === "company"
+                    ? addCompany(suggestion.typed, true)
+                    : addRole(suggestion.typed, true))}
+                >
+                  No, add “{suggestion.typed}” as new
+                </button>
+                <button type="button" className="secondary-btn" onClick={() => setSuggestion(null)}>Cancel</button>
+              </div>
+            </div>
           )}
           <label>College
-            <select value={form.college_id} onChange={(e) => updateField("college_id", e.target.value)} required>
-              <option value="" disabled>Select college</option>
-              {colleges.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <SearchableSelect
+              options={colleges.map((c) => ({ value: c.id, label: c.name }))}
+              value={String(form.college_id ?? "")}
+              onChange={(v) => updateField("college_id", v)}
+              placeholder="Type to search college..."
+              required
+            />
           </label>
           <label>Branch
             <input type="text" value={form.branch} onChange={(e) => updateField("branch", e.target.value)} placeholder="e.g. CSE" />

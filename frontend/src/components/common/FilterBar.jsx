@@ -1,6 +1,8 @@
+import SearchableSelect from "./SearchableSelect";
+
 /**
  * Generic filter bar. `fields` is an array of:
- *   { name, label, type: "select"|"text"|"number", options?: [{value,label}], placeholder? }
+ *   { name, label, type: "select"|"searchable"|"text"|"number", options?: [{value,label}], placeholder? }
  * `values`/`onChange(name, value)` are controlled from the parent.
  */
 export default function FilterBar({ fields, values, onChange, onClear }) {
@@ -16,6 +18,13 @@ export default function FilterBar({ fields, values, onChange, onClear }) {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+          ) : f.type === "searchable" ? (
+            <SearchableSelect
+              options={f.options}
+              value={values[f.name] ?? ""}
+              onChange={(v) => onChange(f.name, v)}
+              placeholder={f.placeholder || `Type to search ${f.label.toLowerCase()}...`}
+            />
           ) : (
             <input
               type={f.type === "number" ? "number" : "text"}

@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,8 +12,9 @@ from app.models.experience import Experience
 from app.models.round import RecruitmentRound
 from app.models.question import Question
 from app.models.user import User
-from app.schemas.company_schemas import CompanyIn, CompanyUpdateIn, RoleIn
-from app.security import role_required
+from app.schemas.company_schemas import CompanyIn, CompanyUpdateIn, RoleIn, SubmitCompanyIn, SubmitRoleIn
+from app.matching import DEFAULT_THRESHOLD, FLAG_THRESHOLD, find_matches, normalize_name
+from app.security import get_current_user_optional, role_required
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -21,10 +22,31 @@ DIFFICULTY_SCORE = {"easy": 1, "medium": 2, "hard": 3}
 SCORE_TO_DIFFICULTY = {1: "easy", 2: "medium", 3: "hard"}
 
 
-@router.get("")
-def list_companies(q: Optional[str] = None, db: Session = Depends(get_db)):
-    """Public. Supports ?q=<search text> for name search (used by the student search bar)."""
+def _can_see(item, user: Optional[User]) -> bool:
+    """Approved items are public; pending ones only to their creator and admins."""
+    if item.status == "approved":
+        return True
+    return user is not None and (user.role == "admin" or item.created_by == user.id)
+
+
+def _visible_companies_query(db: Session, user: Optional[User]):
     query = db.query(Company)
+    if user is None:
+        return query.filter(Company.status == "approved")
+    if user.role == "admin":
+        return query
+    return query.filter((Company.status == "approved") | (Company.created_by == user.id))
+
+
+@router.get("")
+def list_companies(
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Public. Supports ?q=<search text> for name search (used by the student search bar).
+    Pending (user-suggested) companies are only listed for their creator and admins."""
+    query = _visible_companies_query(db, current_user)
     if q and q.strip():
         query = query.filter(Company.name.ilike(f"%{q.strip()}%"))
 
@@ -37,13 +59,68 @@ def list_companies(q: Optional[str] = None, db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/suggest")
+def suggest_companies(
+    name: str,
+    db: Session = Depends(get_db),
+    _user: User = Depends(role_required("student", "alumni", "admin")),
+):
+    """Fuzzy 'did you mean' lookup for the typed company name."""
+    matches = find_matches(name, db.query(Company).all(), min_score=DEFAULT_THRESHOLD)
+    return {"matches": matches}
+
+
+@router.post("/submit")
+def submit_company(
+    payload: SubmitCompanyIn,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(role_required("alumni", "admin")),
+):
+    """Alumni suggest a company that isn't listed.
+
+    - Same normalized name already exists  -> return that company (no duplicate).
+    - Similar names exist and confirm_new is false -> ask the user to confirm.
+    - Otherwise create it as `pending` (admin approves/merges later).
+    """
+    normalized = normalize_name(payload.name)
+    existing = db.query(Company).filter_by(normalized_name=normalized).first()
+    if existing:
+        if not _can_see(existing, current_user):
+            raise HTTPException(status_code=409, detail="This company is awaiting admin review")
+        return {"created": False, "needs_confirmation": False, "matches": [], "company": existing.to_dict()}
+
+    all_companies = db.query(Company).all()
+    close = find_matches(payload.name, all_companies, min_score=DEFAULT_THRESHOLD)
+    if close and not payload.confirm_new:
+        return {"created": False, "needs_confirmation": True, "matches": close, "company": None}
+
+    related = find_matches(payload.name, all_companies, min_score=FLAG_THRESHOLD, limit=1)
+    company = Company(
+        name=payload.name.strip(),
+        status="approved" if current_user.role == "admin" else "pending",
+        created_by=current_user.id,
+        similar_to_id=related[0]["id"] if related else None,
+    )
+    db.add(company)
+    db.commit()
+    db.refresh(company)
+    response.status_code = 201
+    return {"created": True, "needs_confirmation": False, "matches": close, "company": company.to_dict()}
+
+
 @router.get("/{company_id}")
-def get_company(company_id: int, db: Session = Depends(get_db)):
+def get_company(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
     """Public. Full detail including roles, for the company page."""
     company = db.get(Company, company_id)
-    if not company:
+    if not company or not _can_see(company, current_user):
         raise HTTPException(status_code=404, detail="Company not found")
-    data = company.to_dict(include_roles=True)
+    data = company.to_dict()
+    data["roles"] = [r.to_dict() for r in company.roles if _can_see(r, current_user)]
     data["experience_count"] = db.query(Experience).filter_by(company_id=company.id, status="approved").count()
     return data
 
@@ -222,7 +299,7 @@ def create_company(
     db: Session = Depends(get_db),
     _admin: User = Depends(role_required("admin")),
 ):
-    if db.query(Company).filter_by(name=payload.name).first():
+    if db.query(Company).filter_by(normalized_name=normalize_name(payload.name)).first():
         raise HTTPException(status_code=409, detail="Company already exists")
 
     company = Company(name=payload.name, description=payload.description, logo_url=payload.logo_url)
@@ -245,7 +322,7 @@ def update_company(
 
     data = payload.model_dump(exclude_unset=True)
     if "name" in data:
-        existing = db.query(Company).filter_by(name=data["name"]).first()
+        existing = db.query(Company).filter_by(normalized_name=normalize_name(data["name"])).first()
         if existing and existing.id != company_id:
             raise HTTPException(status_code=409, detail="Another company already has that name")
         company.name = data["name"]
@@ -292,6 +369,45 @@ def add_role(
     db.commit()
     db.refresh(role)
     return role.to_dict()
+
+
+@router.post("/{company_id}/roles/submit")
+def submit_role(
+    company_id: int,
+    payload: SubmitRoleIn,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(role_required("alumni", "admin")),
+):
+    """Alumni suggest a missing role for a company. Same flow as companies:
+    exact (case/space-insensitive) match reuses the role, similar titles ask for
+    confirmation, otherwise a `pending` role is created for admin review."""
+    company = db.get(Company, company_id)
+    if not company or not _can_see(company, current_user):
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    title = " ".join(payload.title.split())
+    roles = [r for r in company.roles if _can_see(r, current_user)]
+    for r in roles:
+        if r.title.lower() == title.lower():
+            return {"created": False, "needs_confirmation": False, "matches": [], "role": r.to_dict()}
+
+    class _R:  # adapt Role to the matcher's (id, name, normalized_name) shape
+        def __init__(self, r): self.id, self.name, self.normalized_name = r.id, r.title, normalize_name(r.title)
+
+    close = find_matches(title, [_R(r) for r in roles], min_score=DEFAULT_THRESHOLD)
+    if close and not payload.confirm_new:
+        return {"created": False, "needs_confirmation": True, "matches": close, "role": None}
+
+    role = Role(
+        company_id=company_id, title=title, created_by=current_user.id,
+        status="approved" if current_user.role == "admin" else "pending",
+    )
+    db.add(role)
+    db.commit()
+    db.refresh(role)
+    response.status_code = 201
+    return {"created": True, "needs_confirmation": False, "matches": close, "role": role.to_dict()}
 
 
 @router.delete("/roles/{role_id}")

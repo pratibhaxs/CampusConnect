@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Search, HelpCircle, Building2, Bookmark,
-  FileText, PlusCircle, CheckSquare, Flag, BarChart3, Menu, X, LogOut, Briefcase,
+  FileText, PlusCircle, CheckSquare, Flag, BarChart3, Users, UserCog, GitMerge, Menu, X, LogOut, Briefcase,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -14,17 +14,21 @@ const LINKS = {
     { to: "/questions", label: "Questions", icon: HelpCircle },
     { to: "/companies", label: "Companies", icon: Building2 },
     { to: "/student/saved", label: "Saved", icon: Bookmark },
+    { to: "/account", label: "Account", icon: UserCog },
   ],
   alumni: [
     { to: "/alumni", label: "Dashboard", icon: LayoutDashboard },
     { to: "/alumni/my-experiences", label: "My Experiences", icon: FileText },
     { to: "/alumni/submit-experience", label: "Submit", icon: PlusCircle },
     { to: "/companies", label: "Companies", icon: Building2 },
+    { to: "/account", label: "Account", icon: UserCog },
   ],
   admin: [
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { to: "/admin/experiences", label: "Approvals", icon: CheckSquare },
     { to: "/admin/reports", label: "Reports", icon: Flag },
+    { to: "/admin/suggestions", label: "Suggestions", icon: GitMerge },
+    { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/companies", label: "Companies", icon: Building2 },
     { to: "/admin/statistics", label: "Statistics", icon: BarChart3 },
   ],

@@ -42,8 +42,8 @@ export default function SearchExperiences() {
   }
 
   const fields = [
-    { name: "company_id", label: "Company", type: "select", options: companies.map((c) => ({ value: c.id, label: c.name })) },
-    { name: "college_id", label: "College", type: "select", options: colleges.map((c) => ({ value: c.id, label: c.name })) },
+    { name: "company_id", label: "Company", type: "searchable", options: companies.map((c) => ({ value: c.id, label: c.name })) },
+    { name: "college_id", label: "College", type: "searchable", options: colleges.map((c) => ({ value: c.id, label: c.name })) },
     { name: "year", label: "Placement Year", type: "number", placeholder: "e.g. 2026" },
     { name: "branch", label: "Branch", type: "text", placeholder: "e.g. CSE" },
     { name: "difficulty", label: "Round Difficulty", type: "select", options: DIFFICULTIES },

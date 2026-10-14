@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_Q8u5K24DpdxGXsdkFYCuhpdHVZG0",
+      "name": "campus-placement-hub",
+      "directory": "frontend",
+      "orgId": "team_qReyfc04pzj5OScsYgCcEpCb"
+    }
+  ]
+}

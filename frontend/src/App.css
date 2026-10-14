@@ -1052,3 +1052,28 @@ body {
     gap: 0.5rem;
   }
 }
+
+/* Searchable select (typeable filter list) */
+.searchable-select { position: relative; width: 100%; }
+.searchable-select input { width: 100%; }
+.searchable-select-list {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  max-height: 220px; overflow-y: auto; margin: 4px 0 0; padding: 4px 0;
+  list-style: none; background: #fff; border: 1px solid #d0d0d0;
+  border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.12);
+}
+.searchable-select-list li { padding: 8px 12px; cursor: pointer; color: #000; font-weight: 400; }
+.searchable-select-list li:hover { background: #f0f0f0; }
+.searchable-select-empty { color: #666 !important; cursor: default !important; }
+
+.searchable-select-add { color: #2563eb !important; font-weight: 600 !important; border-top: 1px solid #eee; }
+.suggestion-box {
+  border: 1px solid #f5c26b; background: #fff8e6; border-radius: 8px;
+  padding: 0.75rem 1rem; margin: 0.5rem 0 1rem;
+}
+.suggestion-box p { margin: 0 0 0.5rem; }
+.suggestion-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.badge-pending {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px;
+  background: #fff3cd; color: #8a6100; font-size: 0.75rem; font-weight: 600;
+}

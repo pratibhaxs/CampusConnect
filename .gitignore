@@ -1,127 +1,16 @@
-# =========================
 # Python
-# =========================
-
-# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
+*.pyc
 venv/
 .venv/
-env/
-ENV/
-
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# Test / coverage
 .pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-
-# Type checking
-.mypy_cache/
-.pyre/
-.ruff_cache/
-
-#
-
-
-# =========================
-# FastAPI / Backend
-# =========================
-
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Local database files (if any)
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-*.log
-logs/
-
-
-# =========================
-# MySQL
-# =========================
-
-# MySQL dumps / backups
-*.sql.gz
-*.dump
-*.bak
-
-# Local MySQL data directory
-mysql-data/
-mysql/
-data/
-
-
-# =========================
-# SQLAlchemy
-# =========================
-
-# Alembic cache
-alembic/__pycache__/
-alembic/versions/__pycache__/
-
-
-# =========================
-# React / Node
-# =========================
-
-# Dependencies
+# Node
 node_modules/
-
-# Production build
-frontend/build/
-frontend/dist/
-
-# If React is in the root
-build/
 dist/
-
-# Environment variables
-frontend/.env
-frontend/.env.*
-!frontend/.env.example
-
-
-# Vite
-.vite/
-
-
-# VS Code
+# Env / secrets
+.env
+*.env.local
+# OS / editor
+.DS_Store
 .vscode/
-
-
-
-
-
-
-
-# =========================
-# Secrets / Credentials
-# =========================
-
-*.pem
-*.key
-*.crt
-
-# Local config
-config.local.*
-secrets.*
-.vercel
-.env*
+.idea/

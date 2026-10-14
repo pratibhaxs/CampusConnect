@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import SearchableSelect from "../../components/common/SearchableSelect";
 import { fetchColleges } from "../../api/collegeApi";
 
 const initialForm = {
@@ -34,6 +35,7 @@ export default function Register() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (!form.college_id) { setError("Please pick your college from the list."); return; }
     setSubmitting(true);
     try {
       const payload = {
@@ -85,12 +87,14 @@ export default function Register() {
 
         <label>
           College
-          <select name="college_id" value={form.college_id} onChange={handleChange} required>
-            <option value="" disabled>Select your college</option>
-            {colleges.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            name="college_id"
+            options={colleges.map((c) => ({ value: c.id, label: c.name }))}
+            value={form.college_id}
+            onChange={(v) => setForm({ ...form, college_id: v })}
+            placeholder="Type to search your college..."
+            required
+          />
         </label>
 
         <label>

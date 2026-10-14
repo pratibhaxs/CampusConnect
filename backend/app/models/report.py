@@ -13,7 +13,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     experience_id = Column(Integer, ForeignKey("experiences.id"), nullable=False)
     reason = Column(String(20), nullable=False)
     status = Column(String(20), nullable=False, default="open")
@@ -26,7 +26,7 @@ class Report(Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "reporter_name": self.user.name if self.user else None,
+            "reporter_name": self.user.name if self.user else "Deleted user",
             "experience_id": self.experience_id,
             "experience_title": (
                 f"{self.experience.company.name} — {self.experience.role.title}"

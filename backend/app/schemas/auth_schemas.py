@@ -12,6 +12,10 @@ class RegisterIn(BaseModel):
     graduation_year: Optional[int] = Field(default=None, ge=2000, le=2100)
 
 
+class DeleteAccountIn(BaseModel):
+    password: str
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str

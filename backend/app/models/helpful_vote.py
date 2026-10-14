@@ -10,7 +10,7 @@ class HelpfulVote(Base):
     __tablename__ = "helpful_votes"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     experience_id = Column(Integer, ForeignKey("experiences.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

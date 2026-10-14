@@ -43,19 +43,29 @@ def _build_rounds(db: Session, experience: Experience, rounds_data) -> None:
             ))
 
 
+def _validate_references(db: Session, payload, user: User):
+    """Company/role/college must exist, the role must belong to the company, and a
+    still-pending (user-suggested) company or role may only be used by its creator."""
+    company = db.get(Company, payload.company_id)
+    if not company:
+        raise HTTPException(status_code=400, detail="Invalid company_id")
+    role = db.get(Role, payload.role_id)
+    if not role or role.company_id != payload.company_id:
+        raise HTTPException(status_code=400, detail="Invalid role_id for this company")
+    for item, label in ((company, "company"), (role, "role")):
+        if item.status != "approved" and item.created_by != user.id:
+            raise HTTPException(status_code=400, detail=f"Invalid {label}")
+    if not db.get(College, payload.college_id):
+        raise HTTPException(status_code=400, detail="Invalid college_id")
+
+
 @router.post("", status_code=201)
 def create_experience(
     payload: ExperienceIn,
     db: Session = Depends(get_db),
     current_user: User = Depends(role_required("alumni")),
 ):
-    if not db.get(Company, payload.company_id):
-        raise HTTPException(status_code=400, detail="Invalid company_id")
-    role = db.get(Role, payload.role_id)
-    if not role or role.company_id != payload.company_id:
-        raise HTTPException(status_code=400, detail="Invalid role_id for this company")
-    if not db.get(College, payload.college_id):
-        raise HTTPException(status_code=400, detail="Invalid college_id")
+    _validate_references(db, payload, current_user)
 
     experience = Experience(
         user_id=current_user.id,
@@ -194,6 +204,7 @@ def update_experience(
     if experience.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only edit your own experiences")
 
+    _validate_references(db, payload, current_user)
     experience.company_id = payload.company_id
     experience.role_id = payload.role_id
     experience.college_id = payload.college_id
@@ -245,6 +256,14 @@ def update_status(
     experience = db.get(Experience, experience_id)
     if not experience:
         raise HTTPException(status_code=404, detail="Experience not found")
+
+    if payload.status == "approved" and (
+        experience.company.status != "approved" or experience.role.status != "approved"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Approve or merge the suggested company/role first (Admin > Suggestions).",
+        )
 
     experience.status = payload.status
     db.commit()

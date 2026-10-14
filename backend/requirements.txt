@@ -9,3 +9,4 @@ pyjwt==2.9.0
 bcrypt==4.2.0
 python-dotenv==1.0.1
 python-multipart==0.0.12
+rapidfuzz==3.10.0

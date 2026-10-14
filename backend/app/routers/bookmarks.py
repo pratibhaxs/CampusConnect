@@ -23,7 +23,8 @@ def _target_exists(db: Session, target_type: str, target_id: int) -> bool:
     if target_type == "question":
         return db.get(Question, target_id) is not None
     if target_type == "company":
-        return db.get(Company, target_id) is not None
+        company = db.get(Company, target_id)
+        return company is not None and company.status == "approved"  # pending suggestions aren't public
     return False
 
 

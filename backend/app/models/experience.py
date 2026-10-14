@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship
 
 from app.database import Base
 
+ANONYMOUS_AUTHOR = "Anonymous alumnus"
 VALID_STATUSES = ("pending", "approved", "rejected")
 
 
@@ -13,7 +14,8 @@ class Experience(Base):
 
     id = Column(Integer, primary_key=True)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # NULL = author account was deleted; the experience stays as community content.
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
@@ -46,7 +48,7 @@ class Experience(Base):
         data = {
             "id": self.id,
             "user_id": self.user_id,
-            "user_name": self.user.name if self.user else None,
+            "user_name": self.user.name if self.user else ANONYMOUS_AUTHOR,
             "company_id": self.company_id,
             "company_name": self.company.name if self.company else None,
             "role_id": self.role_id,

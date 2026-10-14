@@ -11,6 +11,9 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import ManageCompanies from "../pages/admin/ManageCompanies";
 import ApproveExperiences from "../pages/admin/ApproveExperiences";
 import Reports from "../pages/admin/Reports";
+import Suggestions from "../pages/admin/Suggestions";
+import ManageUsers from "../pages/admin/ManageUsers";
+import Account from "../pages/Account";
 import Statistics from "../pages/admin/Statistics";
 import CompanyList from "../pages/CompanyList";
 import CompanyPage from "../pages/CompanyPage";
@@ -33,6 +36,8 @@ export default function AppRoutes() {
       <Route path="/search" element={<ProtectedRoute><SearchExperiences /></ProtectedRoute>} />
       <Route path="/questions" element={<ProtectedRoute><QuestionRepository /></ProtectedRoute>} />
 
+      <Route path="/account" element={<ProtectedRoute allowedRoles={["student", "alumni"]}><Account /></ProtectedRoute>} />
+
       <Route path="/student" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
       <Route path="/student/saved" element={<ProtectedRoute allowedRoles={["student"]}><SavedItems /></ProtectedRoute>} />
 
@@ -45,6 +50,8 @@ export default function AppRoutes() {
       <Route path="/admin/companies" element={<ProtectedRoute allowedRoles={["admin"]}><ManageCompanies /></ProtectedRoute>} />
       <Route path="/admin/experiences" element={<ProtectedRoute allowedRoles={["admin"]}><ApproveExperiences /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><Reports /></ProtectedRoute>} />
+      <Route path="/admin/suggestions" element={<ProtectedRoute allowedRoles={["admin"]}><Suggestions /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><ManageUsers /></ProtectedRoute>} />
       <Route path="/admin/statistics" element={<ProtectedRoute allowedRoles={["admin"]}><Statistics /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
